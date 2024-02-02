@@ -2,9 +2,9 @@
 
 #include "Application.h"
 
+#include <execution> // for execution::par
+
 extern Application* kApp = nullptr;
-
-
 
 LRESULT CALLBACK Win32IWindowWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
@@ -27,6 +27,25 @@ Application::Application()
 	, finalPixelmap( nullptr )
 {
 	kApp = this;
+
+
+	#if MT
+	//set itterators
+	_imageVerticalIterator.resize(this->_Window.getSize().y);
+	_imageHorizontalIterator.resize(this->_Window.getSize().x);
+
+	for (uint32_t i = 0; i < this->_Window.getSize().y; ++i)
+	{
+		_imageVerticalIterator[i] = i;
+	}
+
+	for (uint32_t i = 0; i < this->_Window.getSize().x; ++i)
+	{
+		_imageHorizontalIterator[i] = i;
+	}
+	#else
+
+	#endif
 }
 
 Application::~Application()
@@ -159,6 +178,45 @@ void Application::Frame()
 	// clean back buffer with color
 	this->CleanBackbuffer( { 0.0f, 0.2f, 0.0f } );
 
+	const Math::int2& sizeWindow = this->_Window.getSize();
+
+	//camera is looking along Z axis (lefthand sys)
+	// be bouble awere with this
+	float3 fCameraDirection = float3::kAxisZ;
+
+	const float3& camepra_pos = fCameraDirection * -1.f;
+
+	const float aspect_ratio = float(sizeWindow.x) / float(sizeWindow.y);
+	float fMiddleAngle = 90.0f;
+	float fov = 45.0f;
+	float fHalfFov = fov * 0.5f;
+
+	float cosmin = cosf(Math::AngleToRadian(fMiddleAngle - fHalfFov));
+	float cosmax = cosf(Math::AngleToRadian(fMiddleAngle + fHalfFov));
+
+	float3 horStart(cosmax * aspect_ratio, 0.0f, 0.0f);
+	float3 horEnd(cosmin * aspect_ratio, 0.0f, 0.0f);
+
+	float3 verStart(0.0f, cosmin, 0.0f);
+	float3 verEnd(0.0f, cosmax, 0.0f);
+
+	#if MT
+	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(), [this, &sizeWindow, &horStart, &horEnd](uint32_t y)
+		{
+			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd](uint32_t x)
+				{
+					SetBack(x, y, sizeWindow, horStart, horEnd);
+				});
+		});
+	#else
+	for (uint32_t y = 0; y < sizeWindow.y; ++y)
+	{
+		for (uint32_t x = 0; x < sizeWindow.x; ++x)
+		{
+			SetBack(x, y, sizeWindow, horStart, horEnd);
+		}
+	}
+	#endif
 
 #pragma message( "void Application::Frame(), YOUR FUTURE RAY TRACING WILL BE HERE" )
 }
@@ -206,5 +264,32 @@ void Application::CopyColorToWindow( HDC hdc )
 
 	// dropping bitmap
 	DeleteObject( hBitmap );
+}
+
+void Application::SetBack(uint32_t x, uint32_t y, const Math::int2& sizeWindow, const float3& horStart, const float3& horEnd)
+{
+	float u = float(y) / float(sizeWindow.x - 1);
+	float v = float(x) / float(sizeWindow.y - 1);
+
+	//total distribution
+	//x-> [-1, 1]
+	//y-> [1, -1]
+	float3 dir = Math::Lerp(horStart, horEnd, u);
+
+	//Ray r;
+	//r.setPostion(camepra_pos);
+	//r.setDirection(dir);
+
+	////calc colo from ray
+	//float3 col = this->RayTracing(r);
+
+	////clamping extra energy
+	//col.x = Math::Saturate(col.x);
+	//col.y = Math::Saturate(col.y);
+	//col.z = Math::Saturate(col.z);
+
+	////put color into backbuffer
+	//unsigned int uiIndex = i + j * sizeWindow.x;
+	//this->_Backbuffer[uiIndex] = col;
 }
 

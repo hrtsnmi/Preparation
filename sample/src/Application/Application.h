@@ -2,6 +2,8 @@
 
 #include "Window/Win32Window.h"
 
+#define MT 0
+
 class Application final
 {
 public:
@@ -68,4 +70,16 @@ protected:
 	// is allive application
 	//
 	bool _isApplicationAlive;
+
+#if MT
+protected:
+	//adt iterators to use for_each for setting pixels
+	std::vector<uint32_t> _imageHorizontalIterator;
+	std::vector<uint32_t> _imageVerticalIterator;
+#else
+
+#endif
+
+private:
+	void SetBack(uint32_t x, uint32_t y, const Math::int2& sizeWindow, const float3& horStart, const float3& horEnd);
 };
