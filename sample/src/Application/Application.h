@@ -2,7 +2,9 @@
 
 #include "Window/Win32Window.h"
 
-#define MT 0
+#define MT 1
+
+struct Ray;
 
 class Application final
 {
@@ -80,6 +82,13 @@ protected:
 
 #endif
 
-private:
-	void SetBack(uint32_t x, uint32_t y, const Math::int2& sizeWindow, const float3& horStart, const float3& horEnd);
+protected:
+	float3 RayTracing(const Ray& ray);
+};
+
+
+struct Ray
+{
+	float3 _position;
+	float3 _direction;
 };

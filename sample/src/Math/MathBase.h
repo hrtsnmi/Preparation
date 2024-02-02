@@ -87,4 +87,11 @@ namespace Math
 		t = Clamp(t, 0.0f, 1.0f);
 		return lValue + (rValue - lValue) * t;
 	}
+
+	template<typename type>
+	inline type Saturate(const type& lValue)
+	{
+		return lValue;
+		return lValue * 255.f;
+	}
 }

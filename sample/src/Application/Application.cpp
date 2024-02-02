@@ -201,19 +201,70 @@ void Application::Frame()
 	float3 verEnd(0.0f, cosmax, 0.0f);
 
 	#if MT
-	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(), [this, &sizeWindow, &horStart, &horEnd](uint32_t y)
+	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(), [this, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t y)
 		{
-			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd](uint32_t x)
+			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t x)
 				{
-					SetBack(x, y, sizeWindow, horStart, horEnd);
+					float u = float(y) / float(sizeWindow.x - 1);
+					float v = float(x) / float(sizeWindow.y - 1);
+					
+					//total distribution
+					//x-> [-1, 1]
+					//y-> [1, -1]
+					float3 dir = Math::Lerp(horStart, horEnd, u) + Math::Lerp(verStart, verEnd, v) + fCameraDirection;
+					
+					Ray r;
+	
+					r._direction = dir;
+					r._position = camepra_pos;
+					//r.setPostion(camepra_pos);
+					//r.setDirection(dir);
+
+					//calc colo from ray
+					float3 col = this->RayTracing(r);
+
+					//clamping extra energy
+					col.x = Math::Saturate(col.x);
+					col.y = Math::Saturate(col.y);
+					col.z = Math::Saturate(col.z);
+
+					//put color into backbuffer
+					unsigned int uiIndex = x + y * sizeWindow.x;
+					this->_Backbuffer[uiIndex] = col;
 				});
 		});
+			
+					
 	#else
 	for (uint32_t y = 0; y < sizeWindow.y; ++y)
 	{
 		for (uint32_t x = 0; x < sizeWindow.x; ++x)
 		{
-			SetBack(x, y, sizeWindow, horStart, horEnd);
+			float u = float(y) / float(sizeWindow.x - 1);
+			float v = float(x) / float(sizeWindow.y - 1);
+
+			//total distribution
+			//x-> [-1, 1]
+			//y-> [1, -1]
+			float3 dir = Math::Lerp(horStart, horEnd, u);
+
+			Ray r;
+			r._direction = dir;
+			r._position = camepra_pos;
+			//r.setPostion(camepra_pos);
+			//r.setDirection(dir);
+
+			////calc colo from ray
+			float3 col = this->RayTracing(r);
+
+			////clamping extra energy
+			//col.x = Math::Saturate(col.x);
+			//col.y = Math::Saturate(col.y);
+			//col.z = Math::Saturate(col.z);
+
+			////put color into backbuffer
+			unsigned int uiIndex = x + y * sizeWindow.x;
+			this->_Backbuffer[uiIndex] = col;
 		}
 	}
 	#endif
@@ -266,30 +317,17 @@ void Application::CopyColorToWindow( HDC hdc )
 	DeleteObject( hBitmap );
 }
 
-void Application::SetBack(uint32_t x, uint32_t y, const Math::int2& sizeWindow, const float3& horStart, const float3& horEnd)
+float3 Application::RayTracing(const Ray& ray)
 {
-	float u = float(y) / float(sizeWindow.x - 1);
-	float v = float(x) / float(sizeWindow.y - 1);
+	ray._direction.Norm();
+	float LerpL{}, LerpR{ 1.0f };
+	
+	float r{0.f}, g{0.f}, b{1.0f};
 
-	//total distribution
-	//x-> [-1, 1]
-	//y-> [1, -1]
-	float3 dir = Math::Lerp(horStart, horEnd, u);
-
-	//Ray r;
-	//r.setPostion(camepra_pos);
-	//r.setDirection(dir);
-
-	////calc colo from ray
-	//float3 col = this->RayTracing(r);
-
-	////clamping extra energy
-	//col.x = Math::Saturate(col.x);
-	//col.y = Math::Saturate(col.y);
-	//col.z = Math::Saturate(col.z);
-
-	////put color into backbuffer
-	//unsigned int uiIndex = i + j * sizeWindow.x;
-	//this->_Backbuffer[uiIndex] = col;
+	//r = Math::Lerp(LerpL, LerpR, ray._direction.x + 1.f);
+	//g = Math::Lerp(LerpL, LerpR, 2.0f - ray._direction.y - 2.f);
+	
+	
+	return float3(b, g, r);
 }
 
