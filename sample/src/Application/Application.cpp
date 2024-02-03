@@ -321,37 +321,79 @@ void Application::CopyColorToWindow( HDC hdc )
 
 float3 Application::RayTracing(const Ray& ray)
 {
-	float3 coord { ray._direction  + ray._position};
+	float3 fSpherePos(0.0f, 0.0f, 1.0f);
 
-	float LerpL{1.0f}, LerpR{ 0.0f };
-	
-	std::array<float, 3> bgr;
+	auto hitSphere = [](const float3& center, float radius, const Ray& ray) -> bool
+	{
+		float3 AC = ray._position - center;
+		float a{ float3::Dot(ray._direction, ray._direction) };
+		float b{ 2.f * float3::Dot(AC, ray._direction) };
+		float c{ float3::Dot(AC, AC) - radius * radius };
+		float discriminant{ b * b - 4.f * a * c };
 
-	float Gradient{};
+		if (discriminant < 0.0f)
+		{
+			return false;
+		}
+		else if(discriminant == 0.0f)
+		{
+			return true;
+		}
+		else
+		{
+			float SQRTD = std::sqrt(discriminant);
+
+			float answer1{ (-b - SQRTD) / (2.f * a) };
+			float answer2{ (-b + SQRTD) / (2.f * a) };
+			if (answer2 < answer1)
+			{
+				std::swap(answer2, answer2);
+			}
+			return true;
+		}
+	};
+
+	float3 rescolor;
+	if (hitSphere(fSpherePos, 0.5f, ray))
+	{
+		rescolor = float3(1.0f, 1.f, 0.0f);
+	}
+	else
+	{
+		float3 coord{ ray._direction + ray._position };
+
+		float LerpL{ 1.0f }, LerpR{ 0.0f };
+
+		std::array<float, 3> bgr;
+
+		float Gradient{};
 
 #if HG
-	Gradient = 0.5f * (coord.x + 1.f);
-	
+		Gradient = 0.5f * (coord.x + 1.f);
+
 #else
-	Gradient = 0.5f * (-coord.y + 1.f);
+		Gradient = 0.5f * (-coord.y + 1.f);
 #endif
-	
+
 #if !NDEBUG
-	TCHAR szDebugString[256];
-	sprintf_s(szDebugString, sizeof(szDebugString), "Gradient: %f\n",
-		Gradient);
-	OutputDebugString(szDebugString);
+		TCHAR szDebugString[256];
+		sprintf_s(szDebugString, sizeof(szDebugString), "Gradient: %f\n",
+			Gradient);
+		OutputDebugString(szDebugString);
 #else
 
 #endif
-	
-	Gradient = Math::Lerp(LerpL, LerpR, Gradient);
 
-	for (unsigned short i = 0; i < 3; i++)
-	{
-		bgr[i] = Gradient;
+		Gradient = Math::Lerp(LerpL, LerpR, Gradient);
+
+		for (unsigned short i = 0; i < 3; i++)
+		{
+			bgr[i] = Gradient;
+		}
+
+		rescolor = float3(bgr[0], bgr[1], bgr[2]);
 	}
-	
-	return float3(bgr[0], bgr[1], bgr[2]);
+
+	return rescolor;
 }
 
