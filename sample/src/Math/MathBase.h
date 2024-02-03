@@ -80,4 +80,18 @@ namespace Math
 		// value is not less, so we need to take min of max values
 		return Math::Min( value, maximal );
 	}
+
+	template<typename type>
+	inline type Lerp(const type& lValue, const type& rValue, float t)
+	{
+		t = Clamp(t, 0.0f, 1.0f);
+		return lValue + (rValue - lValue) * t;
+	}
+
+	template<typename type>
+	inline type Saturate(const type& lValue)
+	{
+		return lValue;
+		return Clamp(lValue * 255.f, 0.0f,255.f);
+	}
 }

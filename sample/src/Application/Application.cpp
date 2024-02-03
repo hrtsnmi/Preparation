@@ -2,9 +2,9 @@
 
 #include "Application.h"
 
+#include <execution> // for execution::par
+
 extern Application* kApp = nullptr;
-
-
 
 LRESULT CALLBACK Win32IWindowWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
@@ -27,6 +27,25 @@ Application::Application()
 	, finalPixelmap( nullptr )
 {
 	kApp = this;
+
+
+	#if MT
+	//set itterators
+	_imageVerticalIterator.resize(this->_Window.getSize().y);
+	_imageHorizontalIterator.resize(this->_Window.getSize().x);
+
+	for (uint32_t i = 0; i < this->_Window.getSize().y; ++i)
+	{
+		_imageVerticalIterator[i] = i;
+	}
+
+	for (uint32_t i = 0; i < this->_Window.getSize().x; ++i)
+	{
+		_imageHorizontalIterator[i] = i;
+	}
+	#else
+
+	#endif
 }
 
 Application::~Application()
@@ -159,6 +178,98 @@ void Application::Frame()
 	// clean back buffer with color
 	this->CleanBackbuffer( { 0.0f, 0.2f, 0.0f } );
 
+	const Math::int2& sizeWindow = this->_Window.getSize();
+
+	//camera is looking along Z axis (lefthand sys)
+	// be bouble awere with this
+	float3 fCameraDirection = float3::kAxisZ;
+
+	const float3& camepra_pos = fCameraDirection * -1.f;
+
+	const float aspect_ratio = float(sizeWindow.x) / float(sizeWindow.y);
+	float fMiddleAngle = 90.0f;
+	float fov = 45.0f;
+	float fHalfFov = fov * 0.5f;
+
+	float cosmin = cosf(Math::AngleToRadian(fMiddleAngle - fHalfFov));
+	float cosmax = cosf(Math::AngleToRadian(fMiddleAngle + fHalfFov));
+
+	float3 horStart(cosmax * aspect_ratio, 0.0f, 0.0f);
+	float3 horEnd(cosmin * aspect_ratio, 0.0f, 0.0f);
+
+	float3 verStart(0.0f, cosmin, 0.0f);
+	float3 verEnd(0.0f, cosmax, 0.0f);
+
+	#if MT
+	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(), [this, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t y)
+		{
+			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t x)
+				{
+					float u = float(x) / float(sizeWindow.x - 1);
+					float v = float(y) / float(sizeWindow.y - 1);
+
+					//total distribution
+					//x-> [-1, 1]
+					//y-> [1, -1]
+					float3 dir = Math::Lerp(horStart, horEnd, u) + Math::Lerp(verStart, verEnd, v) + fCameraDirection;
+
+					Ray r;
+					r._direction = dir;
+					r._position = camepra_pos;
+
+					//r.setPostion(camepra_pos);
+					//r.setDirection(dir);
+
+					////calc colo from ray
+					float3 col = this->RayTracing(r);
+
+					////clamping extra energy
+					col.x = Math::Saturate(col.x);
+					col.y = Math::Saturate(col.y);
+					col.z = Math::Saturate(col.z);
+
+					////put color into backbuffer
+					unsigned int uiIndex = x + y * sizeWindow.x;
+					this->_Backbuffer[uiIndex] = col;
+				});
+		});
+			
+					
+	#else
+	for (uint32_t y = 0; y < sizeWindow.y; ++y)
+	{
+		for (uint32_t x = 0; x < sizeWindow.x; ++x)
+		{
+			float u = float(x) / float(sizeWindow.x - 1);
+			float v = float(y) / float(sizeWindow.y - 1);
+
+			//total distribution
+			//x-> [-1, 1]
+			//y-> [1, -1]
+			float3 dir = Math::Lerp(horStart, horEnd, u) + Math::Lerp(verStart, verEnd, v) + fCameraDirection;
+
+			Ray r;
+			r._direction = dir;
+			r._position = camepra_pos;
+
+
+			//r.setPostion(camepra_pos);
+			//r.setDirection(dir);
+
+			////calc colo from ray
+			float3 col = this->RayTracing(r);
+
+			////clamping extra energy
+			//col.x = Math::Saturate(col.x);
+			//col.y = Math::Saturate(col.y);
+			//col.z = Math::Saturate(col.z);
+
+			////put color into backbuffer
+			unsigned int uiIndex = x + y * sizeWindow.x;
+			this->_Backbuffer[uiIndex] = col;
+		}
+	}
+	#endif
 
 #pragma message( "void Application::Frame(), YOUR FUTURE RAY TRACING WILL BE HERE" )
 }
@@ -206,5 +317,41 @@ void Application::CopyColorToWindow( HDC hdc )
 
 	// dropping bitmap
 	DeleteObject( hBitmap );
+}
+
+float3 Application::RayTracing(const Ray& ray)
+{
+	float3 coord { ray._direction  + ray._position};
+
+	float LerpL{1.0f}, LerpR{ 0.0f };
+	
+	std::array<float, 3> bgr;
+
+	float Gradient{};
+
+#if HG
+	Gradient = 0.5f * (coord.x + 1.f);
+	
+#else
+	Gradient = 0.5f * (-coord.y + 1.f);
+#endif
+	
+#if !NDEBUG
+	TCHAR szDebugString[256];
+	sprintf_s(szDebugString, sizeof(szDebugString), "Gradient: %f\n",
+		Gradient);
+	OutputDebugString(szDebugString);
+#else
+
+#endif
+	
+	Gradient = Math::Lerp(LerpL, LerpR, Gradient);
+
+	for (unsigned short i = 0; i < 3; i++)
+	{
+		bgr[i] = Gradient;
+	}
+	
+	return float3(bgr[0], bgr[1], bgr[2]);
 }
 

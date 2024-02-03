@@ -2,6 +2,11 @@
 
 #include "Window/Win32Window.h"
 
+#define MT 1
+#define HG 1
+
+struct Ray;
+
 class Application final
 {
 public:
@@ -68,4 +73,23 @@ protected:
 	// is allive application
 	//
 	bool _isApplicationAlive;
+
+#if MT
+protected:
+	//adt iterators to use for_each for setting pixels
+	std::vector<uint32_t> _imageHorizontalIterator;
+	std::vector<uint32_t> _imageVerticalIterator;
+#else
+
+#endif
+
+protected:
+	float3 RayTracing(const Ray& ray);
+};
+
+
+struct Ray
+{
+	float3 _position;
+	float3 _direction;
 };
