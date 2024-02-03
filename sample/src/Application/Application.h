@@ -3,6 +3,7 @@
 #include "Window/Win32Window.h"
 
 #define MT 1
+#define HG 1
 
 struct Ray;
 

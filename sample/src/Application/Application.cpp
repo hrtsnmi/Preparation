@@ -205,30 +205,30 @@ void Application::Frame()
 		{
 			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t x)
 				{
-					float u = float(y) / float(sizeWindow.x - 1);
-					float v = float(x) / float(sizeWindow.y - 1);
-					
+					float u = float(x) / float(sizeWindow.x - 1);
+					float v = float(y) / float(sizeWindow.y - 1);
+
 					//total distribution
 					//x-> [-1, 1]
 					//y-> [1, -1]
 					float3 dir = Math::Lerp(horStart, horEnd, u) + Math::Lerp(verStart, verEnd, v) + fCameraDirection;
-					
+
 					Ray r;
-	
 					r._direction = dir;
 					r._position = camepra_pos;
+
 					//r.setPostion(camepra_pos);
 					//r.setDirection(dir);
 
-					//calc colo from ray
+					////calc colo from ray
 					float3 col = this->RayTracing(r);
 
-					//clamping extra energy
+					////clamping extra energy
 					col.x = Math::Saturate(col.x);
 					col.y = Math::Saturate(col.y);
 					col.z = Math::Saturate(col.z);
 
-					//put color into backbuffer
+					////put color into backbuffer
 					unsigned int uiIndex = x + y * sizeWindow.x;
 					this->_Backbuffer[uiIndex] = col;
 				});
@@ -240,17 +240,19 @@ void Application::Frame()
 	{
 		for (uint32_t x = 0; x < sizeWindow.x; ++x)
 		{
-			float u = float(y) / float(sizeWindow.x - 1);
-			float v = float(x) / float(sizeWindow.y - 1);
+			float u = float(x) / float(sizeWindow.x - 1);
+			float v = float(y) / float(sizeWindow.y - 1);
 
 			//total distribution
 			//x-> [-1, 1]
 			//y-> [1, -1]
-			float3 dir = Math::Lerp(horStart, horEnd, u);
+			float3 dir = Math::Lerp(horStart, horEnd, u) + Math::Lerp(verStart, verEnd, v) + fCameraDirection;
 
 			Ray r;
 			r._direction = dir;
 			r._position = camepra_pos;
+
+
 			//r.setPostion(camepra_pos);
 			//r.setDirection(dir);
 
@@ -319,15 +321,37 @@ void Application::CopyColorToWindow( HDC hdc )
 
 float3 Application::RayTracing(const Ray& ray)
 {
-	ray._direction.Norm();
-	float LerpL{}, LerpR{ 1.0f };
-	
-	float r{0.f}, g{0.f}, b{1.0f};
+	float3 coord { ray._direction  + ray._position};
 
-	//r = Math::Lerp(LerpL, LerpR, ray._direction.x + 1.f);
-	//g = Math::Lerp(LerpL, LerpR, 2.0f - ray._direction.y - 2.f);
+	float LerpL{1.0f}, LerpR{ 0.0f };
 	
+	std::array<float, 3> bgr;
+
+	float Gradient{};
+
+#if HG
+	Gradient = 0.5f * (coord.x + 1.f);
 	
-	return float3(b, g, r);
+#else
+	Gradient = 0.5f * (-coord.y + 1.f);
+#endif
+	
+#if !NDEBUG
+	TCHAR szDebugString[256];
+	sprintf_s(szDebugString, sizeof(szDebugString), "Gradient: %f\n",
+		Gradient);
+	OutputDebugString(szDebugString);
+#else
+
+#endif
+	
+	Gradient = Math::Lerp(LerpL, LerpR, Gradient);
+
+	for (unsigned short i = 0; i < 3; i++)
+	{
+		bgr[i] = Gradient;
+	}
+	
+	return float3(bgr[0], bgr[1], bgr[2]);
 }
 

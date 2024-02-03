@@ -92,6 +92,6 @@ namespace Math
 	inline type Saturate(const type& lValue)
 	{
 		return lValue;
-		return lValue * 255.f;
+		return Clamp(lValue * 255.f, 0.0f,255.f);
 	}
 }
