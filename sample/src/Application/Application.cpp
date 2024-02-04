@@ -198,6 +198,10 @@ void Application::Frame()
 	float3 verStart(0.0f, cosmin, 0.0f);
 	float3 verEnd(0.0f, cosmax, 0.0f);
 
+#if ComparePerfomance
+	Timer t1;
+#endif
+
 #if _HAS_CXX17
 	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(),
 		[this, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t y)
@@ -348,6 +352,12 @@ float3 Application::RayTracing(const Ray& ray)
 	{
 		float3 posAt = ray.PointAt(fDistance);
 
+		/*float forBox = posAt.x + posAt.y + posAt.z;
+		if (forBox <= 3.f * 0.5f)
+		{
+			return BoxColor[0];
+		}*/
+
 		float3 normal = (posAt - fSpherePos).Norm();
 		normal.z = -normal.z;
 		
@@ -397,3 +407,22 @@ float3 Ray::PointAt(float Distance) const
 	//return float3();
 	return this->_direction * Distance + this->_position;
 }
+
+
+#if ComparePerfomance
+Timer::Timer()
+{
+	start = std::chrono::high_resolution_clock::now();
+}
+
+Timer::~Timer()
+{
+	end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<float> duration = end - start;
+
+	TCHAR szDebugString[256];
+	sprintf_s(szDebugString, sizeof(szDebugString), "Timer took: %f ms\n",
+		duration.count() * 1000.f);
+	OutputDebugString(szDebugString);
+}
+#endif

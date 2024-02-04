@@ -3,6 +3,7 @@
 #include "Window/Win32Window.h"
 
 #define HG 0
+#define ComparePerfomance 0
 
 struct Ray;
 
@@ -91,4 +92,30 @@ struct Ray
 	float3 _direction;
 
 	float3 PointAt(float Distance) const;
+};
+
+#if ComparePerfomance
+#include <chrono>
+
+class Timer
+{
+public:
+	Timer();
+	~Timer();
+
+private:
+
+	std::chrono::steady_clock::time_point start;
+	std::chrono::steady_clock::time_point end;
+};
+#endif
+
+const float3 BoxColor[6]
+{
+	float3::kAxisX,				//right
+	float3::kAxisZ,				//front
+	float3(1.0f, 0.0f, 1.0f),	//left
+	float3(0.0f, 1.0f, 1.0f),	//back
+	float3::kAxisY,				//top
+	float3(1.0f, 1.0f, 0.0f),	//bottom
 };
