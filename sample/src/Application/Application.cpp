@@ -29,7 +29,7 @@ Application::Application()
 	kApp = this;
 
 
-	#if MT
+#if _HAS_CXX17
 	//set itterators
 	_imageVerticalIterator.resize(this->_Window.getSize().y);
 	_imageHorizontalIterator.resize(this->_Window.getSize().x);
@@ -43,9 +43,7 @@ Application::Application()
 	{
 		_imageHorizontalIterator[i] = i;
 	}
-	#else
-
-	#endif
+#endif
 }
 
 Application::~Application()
@@ -200,10 +198,12 @@ void Application::Frame()
 	float3 verStart(0.0f, cosmin, 0.0f);
 	float3 verEnd(0.0f, cosmax, 0.0f);
 
-	#if MT
-	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(), [this, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t y)
+#if _HAS_CXX17
+	std::for_each(std::execution::par, _imageVerticalIterator.begin(), _imageVerticalIterator.end(),
+		[this, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t y)
 		{
-			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(), [this, y, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t x)
+			std::for_each(std::execution::par, _imageHorizontalIterator.begin(), _imageHorizontalIterator.end(),
+			[this, y, &sizeWindow, &horStart, &horEnd, &verStart, &verEnd, &camepra_pos, &fCameraDirection](uint32_t x)
 				{
 					float u = float(x) / float(sizeWindow.x - 1);
 					float v = float(y) / float(sizeWindow.y - 1);
@@ -233,8 +233,7 @@ void Application::Frame()
 					this->_Backbuffer[uiIndex] = col;
 				});
 		});
-			
-					
+						
 	#else
 	for (uint32_t y = 0; y < sizeWindow.y; ++y)
 	{
@@ -252,7 +251,6 @@ void Application::Frame()
 			r._direction = dir;
 			r._position = camepra_pos;
 
-
 			//r.setPostion(camepra_pos);
 			//r.setDirection(dir);
 
@@ -260,9 +258,9 @@ void Application::Frame()
 			float3 col = this->RayTracing(r);
 
 			////clamping extra energy
-			//col.x = Math::Saturate(col.x);
-			//col.y = Math::Saturate(col.y);
-			//col.z = Math::Saturate(col.z);
+			col.x = Math::Saturate(col.x);
+			col.y = Math::Saturate(col.y);
+			col.z = Math::Saturate(col.z);
 
 			////put color into backbuffer
 			unsigned int uiIndex = x + y * sizeWindow.x;
@@ -323,7 +321,7 @@ float3 Application::RayTracing(const Ray& ray)
 {
 	float3 fSpherePos(0.0f, 0.0f, 1.0f);
 
-	auto hitSphere = [](const float3& center, const Ray& ray, float radius = 0.5f) -> bool
+	auto hitSphere = [](const float3& center, const Ray& ray, float radius = 0.5f) -> float
 	{
 		float3 AC = ray._position - center;
 		float a{ float3::Dot(ray._direction, ray._direction) };
@@ -331,19 +329,33 @@ float3 Application::RayTracing(const Ray& ray)
 		float c{ float3::Dot(AC, AC) - radius * radius };
 		float discriminant{ b * b - 4.f * a * c };
 
-		return discriminant > 0.0f;
+		if (discriminant < 0.0f)
+		{
+			return -1.0f;
+		}
+
+		float sol1{ -b / (2.f * a) }, sol2{ sol1 };
+		float semiResult = (std::sqrt(discriminant)) / (2.f * a);
+		sol1 += semiResult;
+		sol2 -= semiResult;
+
+		return Math::Min(sol1, sol2);
 	};
 
-	if (hitSphere(fSpherePos, ray))
+	float fDistance = hitSphere(fSpherePos, ray);
+
+	if (fDistance > 0.f)
 	{
-		if (hitSphere(fSpherePos, ray, 0.497f))
-		{
-			return float3(1.0f, 0.f, 0.0f);
-		}
-		else
-		{
-			return float3(0.0f, 1.f, 1.0f);
-		}
+		float3 posAt = ray.PointAt(fDistance);
+
+		float3 normal = (posAt - fSpherePos).Norm();
+		normal.z = -normal.z;
+		
+		//normal.x = 0.f;
+		//normal.y = 0.f;
+		//normal.z = 0.f;
+
+		return 0.5f * (float3::kOne + normal);
 	}
 
 	float3 vCoord{ ray._direction + ray._position };
@@ -380,3 +392,8 @@ float3 Application::RayTracing(const Ray& ray)
 	return float3(bgr[0], bgr[1], bgr[2]);
 }
 
+float3 Ray::PointAt(float Distance) const
+{
+	//return float3();
+	return this->_direction * Distance + this->_position;
+}

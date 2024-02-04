@@ -2,7 +2,7 @@
 
 #include "Window/Win32Window.h"
 
-#define MT 1
+#define HG 0
 
 struct Ray;
 
@@ -73,13 +73,11 @@ protected:
 	//
 	bool _isApplicationAlive;
 
-#if MT
+#if _HAS_CXX17
 protected:
 	//adt iterators to use for_each for setting pixels
 	std::vector<uint32_t> _imageHorizontalIterator;
 	std::vector<uint32_t> _imageVerticalIterator;
-#else
-
 #endif
 
 protected:
@@ -91,4 +89,6 @@ struct Ray
 {
 	float3 _position;
 	float3 _direction;
+
+	float3 PointAt(float Distance) const;
 };
