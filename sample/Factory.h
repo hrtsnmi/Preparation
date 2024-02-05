@@ -54,7 +54,7 @@ inline bool Factory::Register(const std::string& sName)
 #define STRINGS1(x) STRINGS (x)
 #define STRINGS(x) #x
 
-#define STRINGS(TYPE) \
+#define Factory_Register(TYPE) \
 namespace\
 {\
 	static bool registerName = Factory::Register<TYPE>(STRINGS1(TYPE));\
