@@ -96,6 +96,7 @@
     </BuildLog>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Factory.cpp" />
     <ClCompile Include="src\Application\Application.cpp" />
     <ClCompile Include="src\main\main.cpp" />
     <ClCompile Include="src\Math\float3.cpp" />
@@ -108,6 +109,7 @@
     <ClCompile Include="src\Window\Win32Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Factory.h" />
     <ClInclude Include="src\Application\Application.h" />
     <ClInclude Include="src\Math\float3.h" />
     <ClInclude Include="src\Math\int2.h" />

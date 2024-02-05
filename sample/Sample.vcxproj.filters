@@ -37,6 +37,7 @@
     <ClCompile Include="src\Math\int2.cpp">
       <Filter>Math</Filter>
     </ClCompile>
+    <ClCompile Include="Factory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
@@ -55,5 +56,6 @@
     <ClInclude Include="src\Math\MathBase.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="Factory.h" />
   </ItemGroup>
 </Project>
